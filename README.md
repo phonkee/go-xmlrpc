@@ -7,7 +7,7 @@ It's safe, fast, awesome!
 
 Ok let's have a look at example
 
-```golang
+```go
     //go:generate xmlrpcgen --file $GOFILE HelloService
     package example
     
@@ -27,7 +27,7 @@ Nice way is that you can reuse this service in go code.
 
 go-xmlrpc creates http handler for you
 
-```golang
+```go
     handler := xmlrpc.Handler()
     handler.AddService(&HelloService{Config:Config}, "hello")
 ```
