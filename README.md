@@ -71,6 +71,7 @@ Don't forget to rerun `go generate` when you either:
 * add service methods
 
 ## TODO:
+* Add support for missing types (float32, float64, unsigned int, []byte => base64)
 * Add proper error messages to parse errors (with whole path). 
 * Cleanup code generation with proper documentation
 * Possibly remove temporary variables in parsing code.
