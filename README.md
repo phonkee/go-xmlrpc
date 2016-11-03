@@ -8,16 +8,16 @@ It's safe, fast, awesome!
 Ok let's have a look at example
 
 ```go
-    //go:generate xmlrpcgen --file $GOFILE HelloService
-    package example
-    
-    type HelloService struct {
-        Config Config
-    }
-    
-    func (h *HelloService) Search(query string, page int, isit bool) ([]string, error) {
-        return []string{}, nil
-    }
+//go:generate xmlrpcgen --file $GOFILE HelloService
+package example
+
+type HelloService struct {
+    Config Config
+}
+
+func (h *HelloService) Search(query string, page int, isit bool) ([]string, error) {
+    return []string{}, nil
+}
 ```
 
 That's pretty simple service with search method. Now when you run `go generate` go-xmlrpc generates file with
@@ -28,10 +28,10 @@ Nice way is that you can reuse this service in go code.
 go-xmlrpc creates http handler for you
 
 ```go
-    handler := xmlrpc.Handler()
-    if err := handler.AddService(&HelloService{Config:Config}, "hello"); err != nil {
-        panic(err)
-    }
+handler := xmlrpc.Handler()
+if err := handler.AddService(&HelloService{Config:Config}, "hello"); err != nil {
+    panic(err)
+}
 ```
 
 You can then call methods `hello.Search` with your favorite xmlrpc client.
