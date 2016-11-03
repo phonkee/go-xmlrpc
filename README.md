@@ -29,7 +29,9 @@ go-xmlrpc creates http handler for you
 
 ```go
     handler := xmlrpc.Handler()
-    handler.AddService(&HelloService{Config:Config}, "hello")
+    if err := handler.AddService(&HelloService{Config:Config}, "hello"); err != nil {
+        panic(err)
+    }
 ```
 
 You can then call methods `hello.Search` with your favorite xmlrpc client.
@@ -67,13 +69,13 @@ Don't forget to rerun `go generate` when you either:
 * remove service methods
 * add service methods
 
-## TODO
+## TODO:
 * Add proper error messages to parse errors (with whole path). 
 * Cleanup code generation with proper documentation
 * Possibly remove temporary variables in parsing code.
 
-## Contributions
+## Contributions:
 Your PRs are welcome
 
-## Author
+## Author:
 phonkee
