@@ -1,6 +1,6 @@
 # go-xmlrpc
 
-go-xml rpc takes another path to provide parsing of xml. Instead of using reflect heavily, go-xmlrp does code generation.
+go-xml rpc takes another path to provide parsing of xml. Instead of reflect for binding xml=>go, go-xmlrpc does code generation.
 It uses etree implementation and generates code direclty for service methods.
 Isn't that nice?
 It's safe, fast, awesome!
