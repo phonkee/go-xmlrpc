@@ -30,6 +30,8 @@ go-xmlrpc creates http handler for you
 
 ```go
 handler := xmlrpc.Handler()
+
+// We pass Config as example so you see that you can provide database connection or any other resource to service. 
 if err := handler.AddService(&HelloService{Config:Config}, "hello"); err != nil {
     panic(err)
 }
