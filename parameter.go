@@ -4,17 +4,22 @@ import (
 	"bytes"
 	"go/types"
 	"strconv"
+
+	"strings"
 )
 
 /*
 New implementation of parameter
 */
 type Param interface {
-	// GetName returns code name
+	// Name returns code name
 	Name() string
 
-	// GetType returns type
+	// Type returns type
 	Type() string
+
+	// SetType sets type (useful in case of named types)
+	SetType(string)
 
 	// Writes Field
 	FromEtree(element string, resultvar string, errvar string) string
@@ -63,14 +68,14 @@ func getParam(variable *types.Var) Param {
 	case *types.Struct:
 		return newStructParam(variable)
 	case *types.Array:
-		Exit("array")
+		Exit("No support for array")
 	case *types.Slice:
 		// support for []byte (transforms to base64)
 		if x.Elem().String() == "byte" {
 			return newBytesParam(variable.Name())
 		}
 		// all other slices
-		v := types.NewVar(variable.Pos(), variable.Pkg(), variable.Name(), x.Elem())
+		v := types.NewVar(0, variable.Pkg(), variable.Name(), x.Elem())
 		sliceElemParam := getParam(v)
 		return newSliceParam(variable.Name(), x.Elem().String(), sliceElemParam)
 	case *types.Named:
@@ -81,7 +86,12 @@ func getParam(variable *types.Var) Param {
 
 		// create new variable for named type and call getParam
 		v := types.NewVar(variable.Pos(), variable.Pkg(), variable.Name(), x.Underlying())
-		return getParam(v)
+		result := getParam(v)
+
+		t := strings.TrimLeft(x.String(), ".")
+		result.SetType(t)
+
+		return result
 	default:
 		// pass
 	}
@@ -96,6 +106,7 @@ newBoolParam returns boolParam instance (Param implementation for type bool)
 func newBoolParam(name string) Param {
 	return &boolParam{
 		name: name,
+		typ:  "bool",
 	}
 }
 
@@ -104,11 +115,13 @@ boolParam - Param implementation of boolean values
 */
 type boolParam struct {
 	name string
+	typ  string
 }
 
-func (b *boolParam) Imports() []string { return []string{} }
-func (p *boolParam) Name() string      { return p.name }
-func (p *boolParam) Type() string      { return "bool" }
+func (b *boolParam) Imports() []string  { return []string{} }
+func (p *boolParam) Name() string       { return p.name }
+func (p *boolParam) Type() string       { return p.typ }
+func (p *boolParam) SetType(typ string) { p.typ = typ }
 func (p *boolParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 	RenderTemplateInto(&buf, `
@@ -150,17 +163,22 @@ newBytesParam returns new bytesParam
 func newBytesParam(name string) Param {
 	return &bytesParam{
 		name: name,
+		typ:  "[]byte",
 	}
 }
 
 /*
 bytesParam is Param imlpementation for []byte
 */
-type bytesParam struct{ name string }
+type bytesParam struct {
+	name string
+	typ  string
+}
 
-func (p *bytesParam) Imports() []string { return []string{"encoding/base64"} }
-func (p *bytesParam) Name() string      { return p.name }
-func (p *bytesParam) Type() string      { return "[]byte" }
+func (p *bytesParam) Imports() []string  { return []string{"encoding/base64"} }
+func (p *bytesParam) Name() string       { return p.name }
+func (p *bytesParam) Type() string       { return p.typ }
+func (p *bytesParam) SetType(typ string) { p.typ = typ }
 func (p *bytesParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 	RenderTemplateInto(&buf, `var {{.Varname}} {{.Type}}
@@ -208,11 +226,19 @@ floatParam is Param imlpementation for float variables (32, 64)
 type floatParam struct {
 	name    string
 	bitsize int
+	typ     string
 }
 
 func (b *floatParam) Imports() []string { return []string{} }
 func (p *floatParam) Name() string      { return p.name }
-func (p *floatParam) Type() string      { return "float" + strconv.Itoa(p.bitsize) }
+func (p *floatParam) Type() string {
+	if p.typ != "" {
+		return "float" + strconv.Itoa(p.bitsize)
+	}
+	return p.typ
+}
+func (p *floatParam) SetType(typ string) { p.typ = typ }
+
 func (p *floatParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 	RenderTemplateInto(&buf, `
@@ -279,6 +305,10 @@ func (i *intParam) Name() string {
 Type returns type of param
 */
 func (i *intParam) Type() string {
+	if i.typ != "" {
+		return i.typ
+	}
+
 	result := "int"
 
 	if i.unsigned {
@@ -291,6 +321,8 @@ func (i *intParam) Type() string {
 
 	return result
 }
+
+func (p *intParam) SetType(typ string) { p.typ = typ }
 
 func (i *intParam) getParseFunc() string {
 	return "XPathValueGetInt"
@@ -355,9 +387,10 @@ type structParam struct {
 	params []Param
 }
 
-func (b *structParam) Imports() []string { return []string{} }
-func (p *structParam) Name() string      { return p.name }
-func (p *structParam) Type() string      { return p.typ }
+func (b *structParam) Imports() []string  { return []string{} }
+func (p *structParam) Name() string       { return p.name }
+func (p *structParam) Type() string       { return p.typ }
+func (p *structParam) SetType(typ string) { p.typ = typ }
 func (p *structParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 
@@ -453,9 +486,11 @@ type sliceParam struct {
 	object Param
 }
 
-func (b *sliceParam) Imports() []string { return []string{} }
-func (p *sliceParam) Name() string      { return p.name }
-func (p *sliceParam) Type() string      { return "[]" + p.typ }
+func (b *sliceParam) Imports() []string  { return []string{} }
+func (p *sliceParam) Name() string       { return p.name }
+func (p *sliceParam) Type() string       { return "[]" + p.object.Type() }
+func (p *sliceParam) SetType(typ string) { p.typ = typ }
+
 func (p *sliceParam) FromEtree(element string, resultvar string, errvar string) string {
 
 	buf := bytes.Buffer{}
@@ -520,9 +555,11 @@ type errorParam struct {
 	typ  string
 }
 
-func (b *errorParam) Imports() []string { return []string{} }
-func (p *errorParam) Name() string      { return p.name }
-func (p *errorParam) Type() string      { return p.typ }
+func (b *errorParam) Imports() []string  { return []string{} }
+func (p *errorParam) Name() string       { return p.name }
+func (p *errorParam) Type() string       { return p.typ }
+func (p *errorParam) SetType(typ string) { p.typ = typ }
+
 func (p *errorParam) FromEtree(element string, resultvar string, errvar string) string {
 	return ""
 }
@@ -574,17 +611,23 @@ newStringParam returns new strinParam
 func newStringParam(name string) Param {
 	return &stringParam{
 		name: name,
+		typ:  "string",
 	}
 }
 
 /*
 stringParam is Param imlpementation for string variables
 */
-type stringParam struct{ name string }
+type stringParam struct {
+	name string
+	typ  string
+}
 
-func (b *stringParam) Imports() []string { return []string{} }
-func (p *stringParam) Name() string      { return p.name }
-func (p *stringParam) Type() string      { return "string" }
+func (b *stringParam) Imports() []string  { return []string{} }
+func (p *stringParam) Name() string       { return p.name }
+func (p *stringParam) Type() string       { return p.typ }
+func (p *stringParam) SetType(typ string) { p.typ = typ }
+
 func (p *stringParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 	RenderTemplateInto(&buf, `

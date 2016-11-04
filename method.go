@@ -114,6 +114,7 @@ func (r *rpcMethod) FromEtree(element string, resultvar string, errorvar string)
 
 		{{if .ResultVar}}
 			var {{.ResultVar}} {{.Result.Type}}
+
 			{{.ResultVar}}, {{.ErrorVar}} = s.{{.Method}}({{.Params}})
 		{{else}}
 			{{.ErrorVar}} = s.{{.Method}}({{.Params}})
