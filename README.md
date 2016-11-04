@@ -168,8 +168,7 @@ func (s *SearchService) Dispatch(method string, root *etree.Element) (doc *etree
 }
 ````
 
-
-go-xmlrpc creates http handler for you
+go-xmlrpc has handler api so you can register your service instance (pointer) to handler and directly pass as http.Handler
 
 ```go
 handler := xmlrpc.Handler()
