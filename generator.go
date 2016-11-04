@@ -218,17 +218,13 @@ func (g *generator) Format() []byte {
 				} else {
 					// here is place where we need to hydrate results {{if .Result }} {{$tempParam := GenerateVariableName}}
 						{{$tempParam}} := {{$methodResponse}}.CreateElement("params").CreateElement("param").CreateElement("value")
-						{{.Result.ToEtree $tempParam $resultVar "err" }}
-					{{end}}
-				}
-				return
-			{{end}}
+						{{.Result.ToEtree $tempParam $resultVar "err" }} {{end}}
+				}{{end}}
 			default:
 				// method not found, this should not happened since we check whether method exists
 				err = xmlrpc.ErrMethodNotFound
 				return
 			}
-
 			return
 		}
 	{{end}}

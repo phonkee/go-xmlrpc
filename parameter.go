@@ -65,7 +65,7 @@ func getParam(variable *types.Var) Param {
 	case *types.Array:
 		Exit("array")
 	case *types.Slice:
-		// support for []byte
+		// support for []byte (transforms to base64)
 		if x.Elem().String() == "byte" {
 			return newBytesParam(variable.Name())
 		}
@@ -79,7 +79,7 @@ func getParam(variable *types.Var) Param {
 			return newErrorParam("err")
 		}
 
-		// create new variable
+		// create new variable for named type and call getParam
 		v := types.NewVar(variable.Pos(), variable.Pkg(), variable.Name(), x.Underlying())
 		return getParam(v)
 	default:
@@ -156,18 +156,14 @@ func newBytesParam(name string) Param {
 /*
 bytesParam is Param imlpementation for []byte
 */
-type bytesParam struct {
-	name string
-}
+type bytesParam struct{ name string }
 
 func (p *bytesParam) Imports() []string { return []string{"encoding/base64"} }
 func (p *bytesParam) Name() string      { return p.name }
 func (p *bytesParam) Type() string      { return "[]byte" }
 func (p *bytesParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
-	RenderTemplateInto(&buf, `
-	var {{.Varname}} {{.Type}}
-
+	RenderTemplateInto(&buf, `var {{.Varname}} {{.Type}}
 	if {{.Varname}}, {{.ErrorVar}} = xmlrpc.XPathValueGetBytes({{.Element}}, "{{.Name}}"); {{.ErrorVar}} != nil {
 		return
 	}
@@ -350,6 +346,9 @@ func newStructParam(variable *types.Var) Param {
 	return result
 }
 
+/*
+structParam is implementation of Param for struct variables
+*/
 type structParam struct {
 	name   string
 	typ    string
@@ -581,9 +580,7 @@ func newStringParam(name string) Param {
 /*
 stringParam is Param imlpementation for string variables
 */
-type stringParam struct {
-	name string
-}
+type stringParam struct{ name string }
 
 func (b *stringParam) Imports() []string { return []string{} }
 func (p *stringParam) Name() string      { return p.name }

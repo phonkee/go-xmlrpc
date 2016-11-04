@@ -1,7 +1,7 @@
 //go:generate ./xmlrpcgen --file $GOFILE --debug SearchService
 package core
 
-import "github.com/beevik/etree"
+import _ "github.com/beevik/etree"
 
 /*
 SearchService xml rpc service for searching packages
@@ -18,6 +18,5 @@ type Result struct {
 search xml rpc method
 */
 func (h *SearchService) search(what Result) (string, error) {
-	_ = etree.NewDocument()
 	return "", nil
 }

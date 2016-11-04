@@ -117,8 +117,7 @@ func (r *rpcMethod) FromEtree(element string, resultvar string, errorvar string)
 			{{.ResultVar}}, {{.ErrorVar}} = s.{{.Method}}({{.Params}})
 		{{else}}
 			{{.ErrorVar}} = s.{{.Method}}({{.Params}})
-		{{end}}
-		`, map[string]interface{}{
+		{{end}}`, map[string]interface{}{
 		"Service":   r.Service,
 		"Method":    r.Method,
 		"Params":    strings.Join(methodParams, ", "),
