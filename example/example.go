@@ -4,22 +4,14 @@ package core
 import _ "github.com/beevik/etree"
 
 /*
-SearchService xml rpc service for searching packages
+SearchService xml rpc service for searching in database
 */
 type SearchService struct {
 }
 
-type SearchResult struct {
-	_pypi_ordering int
-	version        string
-	name           string
-	summary        string
-}
-
 /*
-search xml rpc method
-*/
-func (h *SearchService) search(query string) (result []SearchResult, err error) {
-	result = make([]SearchResult, 0)
-	return
+Search service method
+ */
+func (h *SearchService) Search(query string, page int, isit bool) ([]string, error) {
+    return []string{}, nil
 }
