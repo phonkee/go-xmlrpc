@@ -86,7 +86,7 @@ func (r *rpcMethod) FromEtree(element string, resultvar string, errorvar string)
 		elemval := param.FromEtree(newelem, param.Name(), "err")
 
 		RenderTemplateInto(&buf, `
-			{{.Variable}} := {{.Root}}.FindElement("methodCall/params/param[{{.Index}}]/value")
+			{{.Variable}} := {{.Root}}.FindElement("param[{{.Index}}]/value")
 			if {{.Variable}} == nil {
 				{{.ErrorVar}} = xmlrpc.Errorf(400, "could not find {{.Name}}")
 				return
