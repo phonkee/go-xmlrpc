@@ -59,8 +59,8 @@ Otherwise error code will be 500.
 
 ## Limitations:
 
-* currently arguments and return values can handle only inline definitions and not named arguments (not added in first version, will probably change in future)
 * Registered services must be pointers (just to be sure all your methods are usable)
+* arguments currently don't support pointers (will be used in the future for non required arguments)
 
 ## Gotchas:
 
@@ -71,7 +71,7 @@ Don't forget to rerun `go generate` when you either:
 * add service methods
 
 ## TODO:
-* Add support for missing types (float32, float64, unsigned int, []byte => base64)
+* Add support for missing types (unsigned integer family)
 * Add proper error messages to parse errors (with whole path). 
 * Cleanup code generation with proper documentation
 * Possibly remove temporary variables in parsing code.

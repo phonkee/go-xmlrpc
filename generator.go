@@ -48,6 +48,7 @@ func NewGenerator(filename string) (Generator, error) {
 
 	// parse file
 	if err = result.parseFile(filename); err != nil {
+		Exit("this")
 		return nil, err
 	}
 	return result, nil
@@ -70,6 +71,15 @@ type generator struct {
 }
 
 func (g *generator) addImports(imports ...string) {
+out:
+	for _, imp := range imports {
+		for _, existing := range g.imports {
+			if imp == existing {
+				continue out
+			}
+		}
+	}
+
 	g.imports = append(g.imports, imports...)
 }
 
@@ -97,13 +107,13 @@ func (g *generator) parseFile(filename string) (err error) {
 			astf = append(astf, f)
 		}
 	}
-
 	var conf loader.Config
 	conf.CreateFromFiles(".", astf...)
-	prog, err := conf.Load()
 
-	if err != nil {
-		Exit(err)
+	prog, errLoad := conf.Load()
+
+	if errLoad != nil {
+		Exit(errLoad)
 	}
 
 	p := prog.Package(".")
@@ -127,7 +137,6 @@ func (g *generator) WriteTemplate(tpl string, data map[string]interface{}) {
 		"getAvailableMethods":         getAvailableMethods,
 	}
 	g.Printf("%v", RenderTemplate(tpl, data, fm))
-
 }
 
 // format generates and returns the gofmt-ed contents of the Generator's buffer.
@@ -136,6 +145,15 @@ func (g *generator) Format() []byte {
 
 	// writeHeader writes header (package name, imports)
 	g.writeHeader()
+
+	// add additional imports for params
+	for _, service := range g.services {
+		for _, method := range service {
+			for _, param := range method.Params {
+				g.addImports(param.Imports()...)
+			}
+		}
+	}
 
 	g.WriteTemplate(`
 	package {{.Package}}

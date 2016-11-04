@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
-	"fmt"
 )
 
 var (
@@ -74,7 +73,6 @@ func (h *handler) AddService(service interface{}, name string) error {
 ListMethods returns list of all available XML rpc methods
 */
 func (h *handler) ListMethods() []string {
-	fmt.Printf("this %#v\n", h.services)
 	result := []string{}
 	for name, service := range h.services {
 		for _, method := range service.ListMethods() {

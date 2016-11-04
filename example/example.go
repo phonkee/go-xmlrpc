@@ -1,22 +1,23 @@
-//go:generate ./xmlrpcgen --file $GOFILE HelloService
+//go:generate ./xmlrpcgen --file $GOFILE --debug SearchService
+package core
 
-package example
-
-import (
-	"github.com/beevik/etree"
-)
+import "github.com/beevik/etree"
 
 /*
-Service
+SearchService xml rpc service for searching packages
 */
-type HelloService struct {
-	Config Config
+type SearchService struct {
+}
+
+
+type Result struct {
+	Hello string
 }
 
 /*
-Search method
+search xml rpc method
 */
-func (h *HelloService) Search(query string, page int, isit bool) ([]string, error) {
-	_ = etree.NewElement("asdf")
-	return []string{}, nil
+func (h *SearchService) search(what Result) (string, error) {
+	_ = etree.NewDocument()
+	return "", nil
 }

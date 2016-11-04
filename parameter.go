@@ -21,6 +21,9 @@ type Param interface {
 
 	// Writes param to element
 	ToEtree(element string, resultvar string, errvar string) string
+
+	// returns all imports for given param
+	Imports() []string
 }
 
 /*
@@ -50,12 +53,23 @@ func getParam(variable *types.Var) Param {
 			return newStringParam(variable.Name())
 		case types.Bool:
 			return newBoolParam(variable.Name())
+		case types.Float32, types.Float64:
+			bitsize := 32
+			if x.Kind() == types.Float64 {
+				bitsize = 64
+			}
+			return newFloatParam(variable.Name(), bitsize)
 		}
 	case *types.Struct:
 		return newStructParam(variable)
 	case *types.Array:
 		Exit("array")
 	case *types.Slice:
+		// support for []byte
+		if x.Elem().String() == "byte" {
+			return newBytesParam(variable.Name())
+		}
+		// all other slices
 		v := types.NewVar(variable.Pos(), variable.Pkg(), variable.Name(), x.Elem())
 		sliceElemParam := getParam(v)
 		return newSliceParam(variable.Name(), x.Elem().String(), sliceElemParam)
@@ -65,8 +79,9 @@ func getParam(variable *types.Var) Param {
 			return newErrorParam("err")
 		}
 
-		// all other is unsupported
-		Exit("No support for named parameters. use inline definitions.")
+		// create new variable
+		v := types.NewVar(variable.Pos(), variable.Pkg(), variable.Name(), x.Underlying())
+		return getParam(v)
 	default:
 		// pass
 	}
@@ -91,8 +106,9 @@ type boolParam struct {
 	name string
 }
 
-func (p *boolParam) Name() string { return p.name }
-func (p *boolParam) Type() string { return "bool" }
+func (b *boolParam) Imports() []string { return []string{} }
+func (p *boolParam) Name() string      { return p.name }
+func (p *boolParam) Type() string      { return "bool" }
 func (p *boolParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 	RenderTemplateInto(&buf, `
@@ -129,6 +145,111 @@ func (p *boolParam) ToEtree(element string, resultvar string, errvar string) str
 }
 
 /*
+newBytesParam returns new bytesParam
+*/
+func newBytesParam(name string) Param {
+	return &bytesParam{
+		name: name,
+	}
+}
+
+/*
+bytesParam is Param imlpementation for []byte
+*/
+type bytesParam struct {
+	name string
+}
+
+func (p *bytesParam) Imports() []string { return []string{"encoding/base64"} }
+func (p *bytesParam) Name() string      { return p.name }
+func (p *bytesParam) Type() string      { return "[]byte" }
+func (p *bytesParam) FromEtree(element string, resultvar string, errvar string) string {
+	buf := bytes.Buffer{}
+	RenderTemplateInto(&buf, `
+	var {{.Varname}} {{.Type}}
+
+	if {{.Varname}}, {{.ErrorVar}} = xmlrpc.XPathValueGetBytes({{.Element}}, "{{.Name}}"); {{.ErrorVar}} != nil {
+		return
+	}
+	`, map[string]interface{}{
+		"Element":  element,
+		"ErrorVar": errvar,
+		"Type":     p.Type(),
+		"Varname":  resultvar,
+		"Name":     p.name,
+	})
+
+	return buf.String()
+}
+func (p *bytesParam) ToEtree(element string, resultvar string, errvar string) string {
+	buf := bytes.Buffer{}
+	RenderTemplateInto(&buf, `
+		{{.Temp}} := base64.StdEncoding.EncodeToString({{.Varname}})
+		{{.Element}}.CreateElement("base64").SetText({{.Temp}})
+	`, map[string]interface{}{
+		"Element":  element,
+		"Varname":  resultvar,
+		"ErrorVar": errvar,
+		"Temp":     GenerateVariableName("temp_variable"),
+	})
+
+	return buf.String()
+}
+
+/*
+newFloatParam returns new floatParam
+*/
+func newFloatParam(name string, bitsize int) Param {
+	return &floatParam{
+		name:    name,
+		bitsize: bitsize,
+	}
+}
+
+/*
+floatParam is Param imlpementation for float variables (32, 64)
+*/
+type floatParam struct {
+	name    string
+	bitsize int
+}
+
+func (b *floatParam) Imports() []string { return []string{} }
+func (p *floatParam) Name() string      { return p.name }
+func (p *floatParam) Type() string      { return "float" + strconv.Itoa(p.bitsize) }
+func (p *floatParam) FromEtree(element string, resultvar string, errvar string) string {
+	buf := bytes.Buffer{}
+	RenderTemplateInto(&buf, `
+	var {{.Varname}} {{.Type}}
+	if {{.Varname}}, {{.ErrorVar}} = xmlrpc.XPathValueGetFloat{{.BitSize}}({{.Element}}, "{{.Name}}"); {{.ErrorVar}} != nil {
+		return
+	}
+	`, map[string]interface{}{
+		"Element":  element,
+		"ErrorVar": errvar,
+		"Type":     p.Type(),
+		"Varname":  resultvar,
+		"Name":     p.name,
+		"BitSize":  p.bitsize,
+	})
+
+	return buf.String()
+}
+func (p *floatParam) ToEtree(element string, resultvar string, errvar string) string {
+	buf := bytes.Buffer{}
+	RenderTemplateInto(&buf, `{{if eq .BitSize 32}}{{.Element}}.CreateElement("double").SetText(strconv.FormatFloat(float64({{.Varname}}), 'f', -1, 32))
+		{{else}}{{.Element}}.CreateElement("double").SetText(strconv.FormatFloat({{.Varname}}, 'f', -1, 64)){{end}}`, map[string]interface{}{
+		"BitSize":  p.bitsize,
+		"Element":  element,
+		"Varname":  resultvar,
+		"ErrorVar": errvar,
+		"Temp":     GenerateVariableName(""),
+	})
+
+	return buf.String()
+}
+
+/*
 newIntParam returns new intParam (Param) instance
 */
 func newIntParam(name string, bitSize int, unsigned bool) Param {
@@ -148,6 +269,8 @@ type intParam struct {
 	typ      string
 	unsigned bool
 }
+
+func (b *intParam) Imports() []string { return []string{} }
 
 /*
 Name returns name of param
@@ -233,8 +356,9 @@ type structParam struct {
 	params []Param
 }
 
-func (p *structParam) Name() string { return p.name }
-func (p *structParam) Type() string { return p.typ }
+func (b *structParam) Imports() []string { return []string{} }
+func (p *structParam) Name() string      { return p.name }
+func (p *structParam) Type() string      { return p.typ }
 func (p *structParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 
@@ -330,8 +454,9 @@ type sliceParam struct {
 	object Param
 }
 
-func (p *sliceParam) Name() string { return p.name }
-func (p *sliceParam) Type() string { return "[]" + p.typ }
+func (b *sliceParam) Imports() []string { return []string{} }
+func (p *sliceParam) Name() string      { return p.name }
+func (p *sliceParam) Type() string      { return "[]" + p.typ }
 func (p *sliceParam) FromEtree(element string, resultvar string, errvar string) string {
 
 	buf := bytes.Buffer{}
@@ -396,8 +521,9 @@ type errorParam struct {
 	typ  string
 }
 
-func (p *errorParam) Name() string { return p.name }
-func (p *errorParam) Type() string { return p.typ }
+func (b *errorParam) Imports() []string { return []string{} }
+func (p *errorParam) Name() string      { return p.name }
+func (p *errorParam) Type() string      { return p.typ }
 func (p *errorParam) FromEtree(element string, resultvar string, errvar string) string {
 	return ""
 }
@@ -459,8 +585,9 @@ type stringParam struct {
 	name string
 }
 
-func (p *stringParam) Name() string { return p.name }
-func (p *stringParam) Type() string { return "string" }
+func (b *stringParam) Imports() []string { return []string{} }
+func (p *stringParam) Name() string      { return p.name }
+func (p *stringParam) Type() string      { return "string" }
 func (p *stringParam) FromEtree(element string, resultvar string, errvar string) string {
 	buf := bytes.Buffer{}
 	RenderTemplateInto(&buf, `
