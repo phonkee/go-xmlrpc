@@ -1,5 +1,5 @@
 //go:generate ./xmlrpcgen --file $GOFILE --debug SearchService
-package core
+package example
 
 import _ "github.com/beevik/etree"
 
